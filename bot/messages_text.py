@@ -1,0 +1,8 @@
+START: str = 'Hello. This bot uploads files to the seafile instance.'
+UPLOAD: str = 'Submit files to upload to the cloud please.'
+UPLOAD_START: str = '<i>Uploading file...</i>'
+UPLOAD_ERROR: str = 'Error while uploading file to the cloud.'
+UPLOAD_SUCCESS: str = 'File uploaded successfully.'
+CANCEL: str = 'Cancel uploading files.'
+LINK: str = ''
+HELP: str = ''

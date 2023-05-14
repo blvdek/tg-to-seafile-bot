@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  bot:
+    build:
+      context: "."
+      dockerfile: Dockerfile
+    environment:
+      - TG_TOKEN=${TG_TOKEN}
+      - SEAFILE_URL=${SEAFILE_URL}
+      - SEAFILE_EMAIL=${SEAFILE_EMAIL}
+      - SEAFILE_PASSWORD=${SEAFILE_PASSWORD}
+      - SEAFILE_REPO=${SEAFILE_REPO}
+      - ALLOWED_IDS=${ALLOWED_IDS}
+      - DEVELOPER_CHAT_ID=${DEVELOPER_CHAT_ID}
+    volumes:
+      - "codebase:/codebase"
+    restart: always
+
+
+volumes:
+  codebase:
