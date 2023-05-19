@@ -91,7 +91,10 @@ async def upload(update: Update, context: CallbackContext) -> int:
 
 
 async def upload_files(update: Update, context: CallbackContext, repo: seafileapi.Repo) -> None:
-    message: Message = await update.message.reply_text(messages_text.UPLOAD_START, parse_mode=ParseMode.HTML)
+    message: Message = await update.message.reply_text(
+        messages_text.UPLOAD_START,
+        parse_mode=ParseMode.HTML
+    )
     if update.effective_message.photo:
         file: File = await update.message.effective_attachment[-1].get_file()
     else:
@@ -108,8 +111,7 @@ async def upload_files(update: Update, context: CallbackContext, repo: seafileap
         await message.edit_text(messages_text.UPLOAD_ERROR, parse_mode=ParseMode.HTML)
         raise seafileapi.exceptions.ClientHttpError
     except IOError:
-        await message.edit_text(messages_text.UPLOAD_ERROR, parse_mode=ParseMode.HTML
-        )
+        await message.edit_text(messages_text.UPLOAD_ERROR, parse_mode=ParseMode.HTML)
         raise IOError
     logger.debug(f'File with name "{file_name}" uploaded succesfully.')
     await message.edit_text(messages_text.UPLOAD_SUCCESS, parse_mode=ParseMode.HTML)
