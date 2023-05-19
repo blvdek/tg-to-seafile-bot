@@ -7,7 +7,7 @@ import html
 
 from loguru import logger
 
-from telegram import Update
+from telegram import Update, Message, File
 from telegram.ext import (
     Application, CallbackContext, ConversationHandler,
     CommandHandler, MessageHandler, filters, ContextTypes
@@ -28,7 +28,7 @@ UPLOAD_FILES: int = 0
 def restricted(func):
     @wraps(func)
     async def wrapped(update, context, *args, **kwargs):
-        user_id = update.effective_user.id
+        user_id: int = update.effective_user.id
         if ALLOWED_IDS and user_id not in ALLOWED_IDS:
             logger.debug(f"Unauthorized access denied for {user_id}.")
             return
@@ -37,7 +37,7 @@ def restricted(func):
 
 
 def check_env() -> None:
-    variables = (
+    variables: tuple = (
         TG_TOKEN,
         SEAFILE_URL,
         SEAFILE_EMAIL,
@@ -53,7 +53,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     logger.error("Exception while handling an update:", exc_info=context.error)
     tb_list: list = traceback.format_exception(None, context.error, context.error.__traceback__)
     tb_string: str = "".join(tb_list)
-    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+    update_str: dict | str = update.to_dict() if isinstance(update, Update) else str(update)
     message: str = (
         f'An exception was raised while handling an update\n'
         f'<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}'
@@ -69,23 +69,33 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     )
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id: int = update.effective_user.id
+    logger.debug(f'{user_id} sent /help or /start.')
+    await update.message.reply_text(messages_text.START, parse_mode=ParseMode.HTML)
+
+
+@restricted
+async def link(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id: int = update.effective_user.id
+    logger.debug(f'{user_id} sent /link.')
+    await update.message.reply_text(messages_text.LINK, parse_mode=ParseMode.HTML)
+
+
 @restricted
 async def upload(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    logger.debug(f'{user.id} sent /upload. Start uploading files conversation.')
-    await update.message.reply_text(messages_text.UPLOAD)
+    user_id: int = update.effective_user.id
+    logger.debug(f'{user_id} sent /upload. Start uploading files conversation.')
+    await update.message.reply_text(messages_text.UPLOAD, parse_mode=ParseMode.HTML)
     return UPLOAD_FILES
 
 
 async def upload_files(update: Update, context: CallbackContext, repo: seafileapi.Repo) -> None:
-    message = await update.message.reply_text(
-        messages_text.UPLOAD_START,
-        parse_mode=ParseMode.HTML
-    )
+    message: Message = await update.message.reply_text(messages_text.UPLOAD_START, parse_mode=ParseMode.HTML)
     if update.effective_message.photo:
-        file = await update.message.effective_attachment[-1].get_file()
+        file: File = await update.message.effective_attachment[-1].get_file()
     else:
-        file = await update.message.effective_attachment.get_file()
+        file: File = await update.message.effective_attachment.get_file()
     file_name: str = f'{file.file_unique_id}.{file.file_path.split(".")[-1]}'
     logger.debug(f'Start uploading file with name "{file_name}".')
     seafile_dir: seafileapi.SeafDir = repo.get_dir('/')
@@ -95,31 +105,20 @@ async def upload_files(update: Update, context: CallbackContext, repo: seafileap
             buff.seek(0)
             seafile_dir.upload(buff, file_name)
     except seafileapi.exceptions.ClientHttpError:
-        await message.edit_text(
-            messages_text.UPLOAD_ERROR,
-            parse_mode=ParseMode.HTML
-        )
+        await message.edit_text(messages_text.UPLOAD_ERROR, parse_mode=ParseMode.HTML)
         raise seafileapi.exceptions.ClientHttpError
     except IOError:
-        await message.edit_text(
-            messages_text.UPLOAD_ERROR,
-            parse_mode=ParseMode.HTML
+        await message.edit_text(messages_text.UPLOAD_ERROR, parse_mode=ParseMode.HTML
         )
         raise IOError
     logger.debug(f'File with name "{file_name}" uploaded succesfully.')
-    await message.edit_text(
-        messages_text.UPLOAD_SUCCESS,
-        parse_mode=ParseMode.HTML
-    )
+    await message.edit_text(messages_text.UPLOAD_SUCCESS, parse_mode=ParseMode.HTML)
 
 
 async def cancel(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    logger.debug(f'User {user.id} canceled the conversation.')
-    await update.message.reply_text(
-        messages_text.CANCEL,
-        parse_mode=ParseMode.HTML
-    )
+    user_id: int = update.effective_user.id
+    logger.debug(f'User {user_id} canceled uploading conversation.')
+    await update.message.reply_text(messages_text.CANCEL, parse_mode=ParseMode.HTML)
     return ConversationHandler.END
 
 
@@ -140,6 +139,8 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
+    application.add_handler(CommandHandler(('start', 'help'), start))
+    application.add_handler(CommandHandler('link', link))
     application.add_handler(conversation_handler)
     application.add_error_handler(error_handler)
     logger.info('Bot starts.')
